@@ -75,6 +75,47 @@ api.interceptors.response.use(
 );
 
 /**
+ * 서버 상태 확인 (헬스체크)
+ */
+export const checkServerHealth = async (): Promise<{
+  success: boolean;
+  data?: {
+    status: string;
+    version: string;
+    timestamp: string;
+    services: {
+      database: string;
+      youtube: string;
+      ai: string;
+      multi_agent: string;
+    };
+  };
+  error?: string;
+}> => {
+  logger.info('🏥 서버 상태 확인 시작');
+  try {
+    const response = await api.get('/api/health', {
+      timeout: 5000, // 헬스체크는 5초 타임아웃
+    });
+    logger.info('✅ 서버 상태 확인 성공', response.data);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error: any) {
+    logger.error('❌ 서버 상태 확인 실패', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+    });
+    return {
+      success: false,
+      error: error.message || '서버 연결 실패',
+    };
+  }
+};
+
+/**
  * @deprecated OAuth2에서 쿠키 인증으로 변경됨
  * @ai-note 하위 호환성을 위해 유지, 추후 제거 예정
  */

@@ -12,12 +12,13 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API & Types
-import { summarizeVideo, getSummaries, analyzeVideoWithAgents } from './src/services/api';
+import { summarizeVideo, getSummaries, analyzeVideoWithAgents, checkServerHealth } from './src/services/api';
 import { Summary } from './src/types';
 import { MultiAgentResponse } from './src/types/multiagent';
 
 // Context
 import { UserProvider, useUser } from './src/contexts/UserContext';
+import { AppStatusProvider, useAppStatus, STATUS_MESSAGES } from './src/contexts/AppStatusContext';
 
 // Components
 import Header from './src/components/Header';
@@ -30,6 +31,7 @@ import MultiAgentReport from './src/components/MultiAgentReport';
 import LoginScreen from './src/components/LoginScreen';
 // import SplashScreen from './src/components/SplashScreen'; // 임시 비활성화
 import LogViewer from './src/components/LogViewer';
+import { AppStatusBar } from './src/components/StatusBar';
 
 // Styles
 import { Colors } from './src/styles/colors';
@@ -50,6 +52,7 @@ const STORAGE_KEY = '@youtube_summaries';
  */
 function AppContent(): React.JSX.Element {
   const [showSplash, setShowSplash] = useState(true);
+  const [serverReady, setServerReady] = useState(false);
   const [viewState, setViewState] = useState<ViewState>('input');
   const [activeTab, setActiveTab] = useState<'summarize' | 'list'>('summarize');
   const [url, setUrl] = useState('');
@@ -62,14 +65,72 @@ function AppContent(): React.JSX.Element {
   // UserContext에서 닉네임 정보 가져오기
   const { nickname, isLoading: userLoading } = useUser();
 
-  // 스플래시 화면 타이머
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      logger.info('⏰ 스플래시 타이머 완료, 메인 화면으로 전환');
-      setShowSplash(false);
-    }, 1000);
+  // AppStatusContext 사용
+  const {
+    showStatus,
+    hideStatus,
+    setServerStatus,
+    setIsConnecting
+  } = useAppStatus();
 
-    return () => clearTimeout(timer);
+  // 서버 헬스체크 및 스플래시 화면
+  useEffect(() => {
+    const initializeApp = async () => {
+      logger.info('🚀 앱 초기화 시작');
+
+      // 상태바에 연결 중 표시
+      showStatus(STATUS_MESSAGES.CHECKING_SERVER, 'loading');
+      setIsConnecting(true);
+      setServerStatus('checking');
+
+      let retries = 3;
+      let connected = false;
+
+      // 헬스체크 (재시도 3회)
+      while (retries > 0 && !connected) {
+        try {
+          const result = await checkServerHealth();
+          if (result.success && result.data?.status === 'healthy') {
+            logger.info('✅ 서버 연결 성공', result.data);
+            connected = true;
+            setServerReady(true);
+            setServerStatus('healthy');
+            showStatus(STATUS_MESSAGES.SERVER_CONNECTED, 'success', 2000);
+          } else {
+            throw new Error(result.error || 'Server unhealthy');
+          }
+        } catch (error) {
+          retries--;
+          logger.warn(`⚠️ 서버 연결 실패, 재시도 남음: ${retries}`, error);
+
+          if (retries > 0) {
+            showStatus(`${STATUS_MESSAGES.RETRYING} (${3 - retries}/3)`, 'loading');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            logger.error('❌ 서버 연결 완전 실패');
+            setServerStatus('unhealthy');
+            showStatus(STATUS_MESSAGES.SERVER_DISCONNECTED, 'error');
+            Alert.alert(
+              '연결 실패',
+              'Tailscale 연결을 확인하고 앱을 재시작해주세요.',
+              [{ text: '확인' }]
+            );
+          }
+        }
+      }
+
+      setIsConnecting(false);
+
+      // 서버 연결 성공 시에만 스플래시 종료
+      if (connected) {
+        setTimeout(() => {
+          setShowSplash(false);
+          hideStatus();
+        }, 500);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   // 앱 시작 시 저장된 요약 목록 불러오기
@@ -247,9 +308,8 @@ function AppContent(): React.JSX.Element {
     }
   };
 
-  // 스플래시 스크린 표시
+  // 스플래시 스크린 표시 (헬스체크 포함)
   if (showSplash) {
-    // @ai-note 단순한 인라인 스플래시 - 컴포넌트 문제 완전 회피
     return (
       <View style={{
         flex: 1,
@@ -257,13 +317,26 @@ function AppContent(): React.JSX.Element {
         alignItems: 'center',
         backgroundColor: '#FFFFFF'
       }}>
+        <AppStatusBar />
         <Text style={{
           fontSize: 24,
           fontWeight: '600',
-          color: '#000000'
+          color: '#000000',
+          marginBottom: 20
         }}>
           유튜브 요약기
         </Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center'
+        }}>
+          <Text style={{
+            fontSize: 12,
+            color: '#666666'
+          }}>
+            {serverReady ? '연결 완료' : '서버 연결 중...'}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -287,6 +360,7 @@ function AppContent(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <AppStatusBar />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -333,9 +407,11 @@ const styles = StyleSheet.create({
  */
 function App(): React.JSX.Element {
   return (
-    <UserProvider>
-      <AppContent />
-    </UserProvider>
+    <AppStatusProvider>
+      <UserProvider>
+        <AppContent />
+      </UserProvider>
+    </AppStatusProvider>
   );
 }
 
