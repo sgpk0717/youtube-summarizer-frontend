@@ -27,6 +27,7 @@ import SummaryList from './src/components/SummaryList';
 import BottomTabs from './src/components/BottomTabs';
 import UserModal from './src/components/UserModal';
 import MultiAgentReport from './src/components/MultiAgentReport';
+import LoginScreen from './src/components/LoginScreen';
 // import SplashScreen from './src/components/SplashScreen'; // 임시 비활성화
 import LogViewer from './src/components/LogViewer';
 
@@ -56,7 +57,6 @@ function AppContent(): React.JSX.Element {
   const [currentSummary, setCurrentSummary] = useState<Summary | null>(null);
   const [multiAgentResult, setMultiAgentResult] = useState<MultiAgentResponse | null>(null);
   const [summaryHistory, setSummaryHistory] = useState<Summary[]>([]);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [useMultiAgent] = useState(true); // 항상 멀티에이전트 사용
 
   // UserContext에서 닉네임 정보 가져오기
@@ -72,16 +72,10 @@ function AppContent(): React.JSX.Element {
     return () => clearTimeout(timer);
   }, []);
 
-  // 앱 시작 시 저장된 요약 목록 불러오기 & 닉네임 체크
+  // 앱 시작 시 저장된 요약 목록 불러오기
   useEffect(() => {
     logger.info('🚀 앱 컴포넌트 마운트', { userLoading, hasNickname: !!nickname });
     loadSummaryHistory();
-
-    // @ai-note 닉네임이 없으면 모달 표시
-    if (!userLoading && !nickname) {
-      logger.info('📝 닉네임 없음, 모달 표시');
-      setShowUserModal(true);
-    }
   }, [userLoading, nickname]);
 
   // 저장된 요약 목록 불러오기
@@ -274,6 +268,22 @@ function AppContent(): React.JSX.Element {
     );
   }
 
+  // 닉네임이 없으면 LoginScreen 표시
+  if (!userLoading && !nickname) {
+    logger.info('📝 닉네임 없음, LoginScreen 표시');
+    return (
+      <>
+        <LoginScreen
+          onLoginComplete={() => {
+            logger.info('✅ 로그인 완료, 메인 화면으로 전환');
+            // 닉네임이 설정되면 자동으로 메인 화면으로 넘어감
+          }}
+        />
+        <LogViewer />
+      </>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -284,7 +294,6 @@ function AppContent(): React.JSX.Element {
       >
         <Header
           nickname={nickname || ''}
-          onUserPress={() => setShowUserModal(true)}
         />
 
         <View style={styles.content}>
@@ -299,11 +308,6 @@ function AppContent(): React.JSX.Element {
         />
       </KeyboardAvoidingView>
 
-      {/* 닉네임 모달 */}
-      <UserModal
-        visible={showUserModal}
-        onClose={() => setShowUserModal(false)}
-      />
 
       {/* 로그 뷰어 */}
       <LogViewer />

@@ -6,34 +6,29 @@
 import { Platform } from 'react-native';
 
 // Tailscale 설정
-export const TAILSCALE_IP = '100.118.223.116';
+// 개발 서버 (Mac)
+export const TAILSCALE_IP_DEV = '100.84.43.116';
+// 운영 서버 (Windows)
+export const TAILSCALE_IP_PROD = '100.118.223.116';
 export const API_PORT = 8000;
 
 /**
  * API Base URL 결정 로직
  *
  * 1. 개발 환경 (__DEV__):
- *    - Android 에뮬레이터: http://10.0.2.2:8000
- *    - iOS 시뮬레이터: http://localhost:8000
+ *    - Mac Tailscale IP 사용: http://100.84.43.116:8000
  *
- * 2. 프로덕션 환경 (실기기):
- *    - Tailscale IP 사용: http://100.118.223.116:8000
+ * 2. 프로덕션 환경 (실기기 릴리즈 빌드):
+ *    - Windows Tailscale IP 사용: http://100.118.223.116:8000
  */
 export const getApiBaseUrl = (): string => {
-  // 개발 환경
+  // 개발 환경: Mac 개발 서버
   if (__DEV__) {
-    if (Platform.OS === 'android') {
-      // Android 에뮬레이터는 10.0.2.2로 호스트 머신 접근
-      return `http://10.0.2.2:${API_PORT}`;
-    } else {
-      // iOS 시뮬레이터는 localhost 사용
-      return `http://localhost:${API_PORT}`;
-    }
+    return `http://${TAILSCALE_IP_DEV}:${API_PORT}`;
   }
 
-  // 프로덕션 환경 (실기기)
-  // Tailscale VPN을 통해 Windows PC 접근
-  return `http://${TAILSCALE_IP}:${API_PORT}`;
+  // 프로덕션 환경: Windows 운영 서버
+  return `http://${TAILSCALE_IP_PROD}:${API_PORT}`;
 };
 
 // OAuth2 관련 설정
@@ -45,9 +40,9 @@ export const OAUTH2_CONFIG = {
 
 // API 타임아웃 설정
 export const API_TIMEOUT = {
-  default: 60000,        // 기본 60초
-  summarize: 120000,     // 요약은 120초 (멤버십 영상은 시간이 걸릴 수 있음)
-  oauth: 5000,          // OAuth 상태 확인은 5초
+  default: 180000,       // 기본 180초 (3분) - 멀티에이전트 처리 고려
+  summarize: 300000,     // 요약은 300초 (5분) - 멀티에이전트는 시간이 더 걸림
+  oauth: 10000,          // OAuth 상태 확인은 10초
 };
 
 // 에러 메시지
