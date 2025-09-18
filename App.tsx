@@ -156,6 +156,38 @@ function AppContent(): React.JSX.Element {
     }
   };
 
+  // 멀티에이전트 결과를 Summary로 변환
+  const convertMultiAgentToSummary = (multiAgentResult: MultiAgentResponse, originalUrl: string): Summary => {
+    // 종합 보고서에서 간단한 요약 추출 (첫 번째 문단 또는 처음 100자)
+    const finalReport = multiAgentResult.final_report || '';
+    const firstParagraph = finalReport.split('\n').find(line => line.trim().length > 20) || '';
+    const briefSummary = firstParagraph.length > 100
+      ? firstParagraph.substring(0, 100) + '...'
+      : firstParagraph || '멀티에이전트 분석 완료';
+
+    // 키 포인트 추출 (보고서에서 - 또는 * 로 시작하는 라인들 찾기)
+    const keyPointsRegex = /^[\s]*[-*]\s*(.+)$/gm;
+    const keyPointsMatches = finalReport.match(keyPointsRegex) || [];
+    const keyPoints = keyPointsMatches
+      .map(match => match.replace(/^[\s]*[-*]\s*/, '').trim())
+      .filter(point => point.length > 0)
+      .slice(0, 5); // 최대 5개
+
+    if (keyPoints.length === 0) {
+      keyPoints.push('멀티에이전트 시스템으로 분석 완료');
+    }
+
+    return {
+      url: originalUrl,
+      title: multiAgentResult.title,
+      channel: multiAgentResult.channel,
+      duration: multiAgentResult.duration,
+      one_line: briefSummary,
+      key_points: keyPoints,
+      detailed_summary: finalReport || '멀티에이전트 분석으로 생성된 종합 보고서',
+    };
+  };
+
   // 요약을 목록에 저장
   const saveSummaryToHistory = async (summary: Summary) => {
     logger.info('💾 요약 저장 시작', { title: summary.title });
@@ -212,9 +244,14 @@ function AppContent(): React.JSX.Element {
         const result = await analyzeVideoWithAgents(url, nickname);
 
         if (result.success && result.data) {
-          logger.info('✅ 멀티에이전트 분석 성공', { agents: result.data.agents?.length });
+          logger.info('✅ 멀티에이전트 분석 성공', { title: result.data.title });
           setMultiAgentResult(result.data);
           setViewState('multiagent');
+
+          // 멀티에이전트 결과를 Summary로 변환해서 목록에 저장
+          const convertedSummary = convertMultiAgentToSummary(result.data, url);
+          await saveSummaryToHistory(convertedSummary);
+
           // URL 초기화
           setUrl('');
         } else {

@@ -157,61 +157,6 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral.white,
     letterSpacing: -0.2,
   },
-  chartContainer: {
-    paddingHorizontal: 20,
-    marginTop: 20,
-  },
-  chartCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#191F28',
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-  chartContent: {
-    alignItems: 'center',
-  },
-  barChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    width: '100%',
-    paddingHorizontal: 10,
-    marginBottom: 12,
-  },
-  barItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginHorizontal: 4,
-  },
-  bar: {
-    width: '60%',
-    borderRadius: 4,
-    marginBottom: 6,
-  },
-  barLabel: {
-    fontSize: 10,
-    color: '#6B7684',
-    letterSpacing: -0.2,
-  },
-  chartDescription: {
-    fontSize: 12,
-    color: '#8B95A1',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-    marginTop: 8,
-  },
 });
 
 export default URLInputView;
