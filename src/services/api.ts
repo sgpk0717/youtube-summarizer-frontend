@@ -229,7 +229,7 @@ export const analyzeVideoWithAgents = async (
   try {
     const response = await api.post<MultiAgentResponse>(
       '/api/summarize',
-      { url, nickname },
+      { url, user_id: nickname },  // nickname을 user_id로 전송
       { timeout: API_TIMEOUT.summarize || 120000 }
     );
 
