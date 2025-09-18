@@ -22,10 +22,6 @@ export const API_PORT = 8000;
  *    - Windows Tailscale IP 사용: http://100.118.223.116:8000
  */
 export const getApiBaseUrl = (): string => {
-  // 임시: 릴리즈 빌드에서도 Mac 개발 서버 사용 (디버깅용)
-  return `http://${TAILSCALE_IP_DEV}:${API_PORT}`;
-
-  /* 원래 로직 (나중에 복원)
   // 개발 환경: Mac 개발 서버
   if (__DEV__) {
     return `http://${TAILSCALE_IP_DEV}:${API_PORT}`;
@@ -33,7 +29,6 @@ export const getApiBaseUrl = (): string => {
 
   // 프로덕션 환경: Windows 운영 서버
   return `http://${TAILSCALE_IP_PROD}:${API_PORT}`;
-  */
 };
 
 // OAuth2 관련 설정
