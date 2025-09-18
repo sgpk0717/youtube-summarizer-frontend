@@ -282,6 +282,7 @@ function AppContent(): React.JSX.Element {
             url={url}
             onChangeUrl={setUrl}
             loading={loading}
+            onAnalyze={handleSummarize}
           />
         );
 
@@ -377,7 +378,10 @@ function AppContent(): React.JSX.Element {
         <BottomTabs
           activeTab={activeTab}
           onTabPress={handleTabPress}
-          onSummarize={handleSummarize}
+          onSummarize={() => {
+            // 탭에서는 API 호출하지 않음, URLInputView의 분석하기 버튼에서만 호출
+            logger.info('📱 요약하기 탭 클릭 - 탭 전환만 수행');
+          }}
           loading={loading}
         />
       </KeyboardAvoidingView>

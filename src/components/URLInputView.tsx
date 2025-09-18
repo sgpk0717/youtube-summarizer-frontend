@@ -5,7 +5,9 @@ import {
   TextInput,
   StyleSheet,
   Animated,
-  Dimensions
+  Dimensions,
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import { Colors } from '../styles/colors';
 import { theme } from '../styles/theme';
@@ -15,12 +17,14 @@ interface URLInputViewProps {
   url: string;
   onChangeUrl: (text: string) => void;
   loading: boolean;
+  onAnalyze: () => void;
 }
 
 const URLInputView: React.FC<URLInputViewProps> = ({
   url,
   onChangeUrl,
   loading,
+  onAnalyze,
 }) => {
   logger.debug('🔤 URLInputView 렌더링', { url, loading });
 
@@ -70,6 +74,20 @@ const URLInputView: React.FC<URLInputViewProps> = ({
             onBlur={handleBlur}
           />
         </View>
+
+        {/* 분석하기 버튼 */}
+        <TouchableOpacity
+          style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
+          onPress={onAnalyze}
+          disabled={loading || !url.trim()}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+          ) : (
+            <Text style={styles.analyzeButtonText}>분석하기</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -106,7 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral.gray100,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -119,6 +137,25 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.md,
     color: theme.colors.neutral.black,
     textAlign: 'center',
+  },
+  analyzeButton: {
+    backgroundColor: theme.colors.primary.main,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.sm,
+  },
+  analyzeButtonDisabled: {
+    backgroundColor: theme.colors.neutral.gray400,
+    opacity: 0.6,
+  },
+  analyzeButtonText: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.neutral.white,
+    letterSpacing: -0.2,
   },
   chartContainer: {
     paddingHorizontal: 20,
