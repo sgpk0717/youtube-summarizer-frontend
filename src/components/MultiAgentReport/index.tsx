@@ -32,7 +32,8 @@ const MultiAgentReport: React.FC<MultiAgentReportProps> = ({ data }) => {
     title: data.title,
     channel: data.channel,
     hasAnalysisResult: !!data.analysis_result,
-    processingStatus: data.processing_status
+    processingStatus: data.analysis_result?.processing_status,
+    completedAgents: data.analysis_result?.processing_status?.completed_agents
   });
 
   const [activeTab, setActiveTab] = useState<AgentType>('synthesis');
@@ -49,19 +50,46 @@ const MultiAgentReport: React.FC<MultiAgentReportProps> = ({ data }) => {
   /**
    * @function availableAgents
    * @intent 성공한 에이전트 목록 계산
-   * @ai-note processing_status에서 successful_agents 확인
+   * @ai-note processing_status는 analysis_result 안에 있음
+   * @ai-fixed 2024-01-20: completed_agents 배열을 프론트엔드 탭 ID로 매핑
    */
   const availableAgents = useMemo(() => {
-    if (!data.processing_status?.successful_agents) {
+    const processingStatus = data.analysis_result?.processing_status;
+
+    if (!processingStatus?.completed_agents || processingStatus.completed_agents.length === 0) {
       logger.debug('🔍 기본 에이전트 사용', { defaultAgents: ['synthesis'] });
       return ['synthesis']; // 기본값
     }
-    logger.info('✅ 성공한 에이전트 목록', {
-      successful_agents: data.processing_status.successful_agents,
-      count: data.processing_status.successful_agents.length
+
+    // 백엔드 에이전트 이름을 프론트엔드 탭 ID로 매핑
+    const backendToFrontendMap: { [key: string]: string } = {
+      'transcript_refiner': 'summary',
+      'speaker_diarizer': 'summary',
+      'topic_cohesion': 'insights',
+      'structure_designer': 'structure',
+      'report_synthesizer': 'synthesis'
+    };
+
+    // 중복 제거하여 고유한 탭 ID만 추출
+    const mappedAgents = Array.from(new Set(
+      processingStatus.completed_agents
+        .map(agent => backendToFrontendMap[agent])
+        .filter(Boolean)
+    ));
+
+    // 기본값을 포함하여 최소한 synthesis는 표시
+    if (!mappedAgents.includes('synthesis')) {
+      mappedAgents.push('synthesis');
+    }
+
+    logger.info('✅ 에이전트 매핑 완료', {
+      backend_agents: processingStatus.completed_agents,
+      frontend_tabs: mappedAgents,
+      count: mappedAgents.length
     });
-    return data.processing_status.successful_agents;
-  }, [data.processing_status]);
+
+    return mappedAgents;
+  }, [data.analysis_result]);
 
   /**
    * @function renderAgentContent
@@ -79,35 +107,46 @@ const MultiAgentReport: React.FC<MultiAgentReportProps> = ({ data }) => {
         logger.debug('📁 종합 보고서 표시', {
           hasData: !!data.analysis_result?.report_synthesis
         });
-        return <SynthesisView data={data.analysis_result?.report_synthesis} />;
+        // report_synthesis에서 final_report를 추출하여 전달
+        return <SynthesisView data={{
+          final_report: data.analysis_result?.report_synthesis?.final_report || data.final_report || '보고서를 생성 중입니다...'
+        }} />;
 
       case 'summary':
         logger.debug('📄 요약 에이전트 표시', {
-          hasData: !!data.analysis_result?.summary_agent
+          hasData: !!data.analysis_result?.transcript_refinement
         });
-        return <SummaryAgentView data={data.analysis_result?.summary_agent} />;
+        // transcript_refinement 데이터를 사용
+        return <SummaryAgentView data={data.analysis_result?.transcript_refinement} />;
 
       case 'structure':
         logger.debug('🏠 구조 에이전트 표시', {
-          hasData: !!data.analysis_result?.structure_agent
+          hasData: !!data.analysis_result?.structure_design
         });
-        return <StructureAgentView data={data.analysis_result?.structure_agent} />;
+        // structure_design 데이터를 사용
+        return <StructureAgentView data={data.analysis_result?.structure_design} />;
 
       case 'insights':
         logger.debug('💡 인사이트 에이전트 표시', {
-          hasData: !!data.analysis_result?.insights_agent
+          hasData: !!data.analysis_result?.topic_cohesion
         });
-        return <InsightsAgentView data={data.analysis_result?.insights_agent} />;
+        // topic_cohesion 데이터를 사용
+        return <InsightsAgentView data={data.analysis_result?.topic_cohesion} />;
 
       case 'practical':
         logger.debug('🌠 실용 에이전트 표시', {
-          hasData: !!data.analysis_result?.practical_agent
+          hasData: false // 백엔드에 practical 에이전트가 없음
         });
-        return <PracticalAgentView data={data.analysis_result?.practical_agent} />;
+        // 백엔드에 해당 에이전트가 없으므로 빈 데이터 표시
+        return <PracticalAgentView data={null} />;
 
       default:
         logger.warn('⚠️ 알 수 없는 에이전트 탭', { activeTab });
-        return null;
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>데이터가 없습니다.</Text>
+          </View>
+        );
     }
   };
 
@@ -165,6 +204,16 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
   },
 });
 

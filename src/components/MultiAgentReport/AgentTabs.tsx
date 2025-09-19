@@ -86,16 +86,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    paddingBottom: 4, // 인디케이터 공간 확보
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8, // 상하 패딩 줄임
   },
   tab: {
     marginRight: 20,
     paddingVertical: 8,
     alignItems: 'center',
     minWidth: 60,
+    position: 'relative', // 인디케이터 포지셔닝 위해
   },
   activeTab: {
     // 활성 탭 스타일
@@ -120,7 +122,7 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: -8,
+    bottom: -12, // 탭 컨테이너 안에서 적절한 위치로 조정
     width: '80%',
     height: 3,
     borderRadius: 1.5,

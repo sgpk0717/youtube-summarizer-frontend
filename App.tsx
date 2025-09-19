@@ -139,20 +139,33 @@ function AppContent(): React.JSX.Element {
     loadSummaryHistory();
   }, [userLoading, nickname]);
 
-  // 저장된 요약 목록 불러오기
+  // 서버에서 요약 목록 불러오기 (닉네임별 필터링)
   const loadSummaryHistory = async () => {
-    logger.info('📂 저장된 요약 목록 불러오기 시작');
+    logger.info('📂 서버에서 요약 목록 불러오기 시작', { nickname });
+
+    if (!nickname) {
+      logger.info('📋 닉네임 없음, 목록 로드 건너뛰기');
+      return;
+    }
+
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const summaries = JSON.parse(stored);
-        logger.info('✅ 요약 목록 불러오기 성공', { count: summaries.length });
-        setSummaryHistory(summaries);
+      const result = await getSummaries(nickname);
+      if (result.success && result.data) {
+        logger.info('✅ 서버 요약 목록 불러오기 성공', {
+          nickname,
+          count: result.data.length
+        });
+        setSummaryHistory(result.data);
       } else {
-        logger.info('📋 저장된 요약 없음');
+        logger.error('❌ 서버 요약 목록 불러오기 실패', {
+          nickname,
+          error: result.error
+        });
+        setSummaryHistory([]);
       }
     } catch (error) {
-      logger.error('❌ 요약 목록 불러오기 실패', error);
+      logger.error('❌ 요약 목록 불러오기 예외', { nickname, error });
+      setSummaryHistory([]);
     }
   };
 
@@ -188,23 +201,24 @@ function AppContent(): React.JSX.Element {
     };
   };
 
-  // 요약을 목록에 저장
+  // 요약을 서버에 저장 (서버에서 자동 저장되므로 로컬 처리만)
   const saveSummaryToHistory = async (summary: Summary) => {
-    logger.info('💾 요약 저장 시작', { title: summary.title });
+    logger.info('💾 요약 히스토리 업데이트', { title: summary.title });
     try {
+      // 서버에서 이미 저장되었으므로, 로컬 상태만 업데이트
       const newSummary = {
         ...summary,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
+        id: summary.id || Date.now().toString(),
+        created_at: summary.created_at || new Date().toISOString(),
       };
 
-      const updatedHistory = [newSummary, ...summaryHistory];
+      // 로컬 상태 업데이트 (중복 방지)
+      const updatedHistory = [newSummary, ...summaryHistory.filter(s => s.url !== summary.url)];
       setSummaryHistory(updatedHistory);
 
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
-      logger.info('✅ 요약 저장 성공', { id: newSummary.id });
+      logger.info('✅ 로컬 히스토리 업데이트 성공', { id: newSummary.id });
     } catch (error) {
-      logger.error('❌ 요약 저장 실패', error);
+      logger.error('❌ 히스토리 업데이트 실패', error);
     }
   };
 
@@ -285,7 +299,7 @@ function AppContent(): React.JSX.Element {
   };
 
   // 탭 전환 처리
-  const handleTabPress = (tab: 'summarize' | 'list') => {
+  const handleTabPress = async (tab: 'summarize' | 'list') => {
     logger.info('📱 탭 전환', { from: activeTab, to: tab });
     setActiveTab(tab);
 
@@ -299,6 +313,8 @@ function AppContent(): React.JSX.Element {
       }
     } else {
       setViewState('list');
+      // 목록 탭으로 전환할 때 서버에서 최신 데이터 로드
+      await loadSummaryHistory();
     }
   };
 

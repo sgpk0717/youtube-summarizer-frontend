@@ -193,11 +193,13 @@ export const summarizeVideo = async (url: string): Promise<ApiResponse<Summary>>
   }
 };
 
-export const getSummaries = async (): Promise<ApiResponse<Summary[]>> => {
-  logger.info('📂 요약 목록 가져오기 시작');
+export const getSummaries = async (nickname?: string): Promise<ApiResponse<Summary[]>> => {
+  logger.info('📂 요약 목록 가져오기 시작', { nickname });
   try {
-    const response = await api.get<Summary[]>('/api/summaries');
+    const params = nickname ? { user_id: nickname } : {};
+    const response = await api.get<Summary[]>('/api/summaries', { params });
     logger.info('✅ 요약 목록 가져오기 성공', {
+      nickname,
       count: response.data.length,
     });
     return {
@@ -206,6 +208,7 @@ export const getSummaries = async (): Promise<ApiResponse<Summary[]>> => {
     };
   } catch (error: any) {
     logger.error('❌ 요약 목록 가져오기 실패', {
+      nickname,
       error: error.response?.data || error.message,
     });
     return {

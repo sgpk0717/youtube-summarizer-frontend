@@ -66,22 +66,24 @@ export interface MultiAgentAnalysisResult {
 /**
  * @interface ProcessingStatus
  * @intent 멀티에이전트 처리 상태 추적
- * @ai-note 실시간 진행 상태 표시에 사용
+ * @ai-note 백엔드 MultiAgentProcessingStatus와 매칭
+ * @ai-fixed 2024-01-20: completed_agents 추가, successful_agents 타입 수정
  */
 export interface ProcessingStatus {
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  successful_agents: string[];
-  failed_agents: string[];
   current_agent?: string;
-  current_progress?: number;
-  total_processing_time: number;
-  message?: string;
+  completed_agents: string[];  // 백엔드가 실제로 보내는 필드
+  error_message?: string;
+  started_at?: string;
+  completed_at?: string;
+  total_processing_time?: number;
 }
 
 /**
  * @interface MultiAgentResponse
  * @intent 백엔드 /api/summarize 응답 전체 구조
  * @ai-warning 이 타입 변경 시 백엔드와 동기화 필수
+ * @ai-fixed 2024-01-20: analysis_result 타입을 any로 변경 (백엔드 실제 구조와 매칭)
  */
 export interface MultiAgentResponse {
   // 비디오 기본 정보
@@ -89,13 +91,26 @@ export interface MultiAgentResponse {
   title: string;
   channel: string;
   duration: string;
-  language: string;
+  language?: string;
 
-  // 멀티에이전트 분석 결과
-  analysis_result: MultiAgentAnalysisResult;
-
-  // 처리 상태
-  processing_status: ProcessingStatus;
+  // 멀티에이전트 분석 결과 (백엔드는 model_dump()로 전송)
+  analysis_result: {
+    // 각 에이전트 결과
+    transcript_refinement?: any;
+    speaker_diarization?: any;
+    topic_cohesion?: any;
+    structure_design?: any;
+    report_synthesis?: {
+      final_report: string;
+      report_metadata?: any;
+      word_count?: number;
+    };
+    // 처리 상태 (analysis_result 안에 있음!)
+    processing_status: ProcessingStatus;
+    // 통계
+    total_agents: number;
+    successful_agents: number;
+  };
 
   // 종합 보고서 (빠른 접근용)
   final_report?: string;
@@ -103,7 +118,7 @@ export interface MultiAgentResponse {
   // 메타 정보
   transcript_available: boolean;
   analysis_type: 'multi_agent';
-  processing_time: number;
+  processing_time?: number;
 
   // 저장용 필드
   id?: string;
