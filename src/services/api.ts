@@ -3,6 +3,7 @@ import { Summary, ApiResponse } from '../types';
 import { MultiAgentResponse } from '../types/multiagent';
 import { getApiBaseUrl, API_TIMEOUT } from '../config/api.config';
 import { logger } from './logger';
+import fcmService from './fcmService';
 
 // API 인스턴스 생성
 const api = axios.create({
@@ -230,9 +231,24 @@ export const analyzeVideoWithAgents = async (
 ): Promise<ApiResponse<MultiAgentResponse>> => {
   logger.logFunction('analyzeVideoWithAgents', { url, nickname });
   try {
+    // FCM 토큰 가져오기 (옵셔널 - 실패해도 계속 진행)
+    let fcmToken: string | null = null;
+    try {
+      fcmToken = await fcmService.getToken();
+      if (fcmToken) {
+        logger.info('📱 FCM 토큰 포함하여 전송');
+      }
+    } catch (fcmError) {
+      logger.debug('🔕 FCM 토큰 없음 - 푸시 알림 비활성화', fcmError);
+    }
+
     const response = await api.post<MultiAgentResponse>(
       '/api/summarize',
-      { url, user_id: nickname },  // nickname을 user_id로 전송
+      {
+        url,
+        user_id: nickname,
+        fcm_token: fcmToken  // FCM 토큰 추가 (옵셔널)
+      },
       { timeout: API_TIMEOUT.summarize || 120000 }
     );
 

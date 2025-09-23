@@ -39,6 +39,8 @@ import { theme } from './src/styles/theme';
 
 // Logger
 import { logger } from './src/services/logger';
+// FCM Service
+import fcmService from './src/services/fcmService';
 
 type ViewState = 'input' | 'summary' | 'list' | 'multiagent';
 
@@ -77,6 +79,11 @@ function AppContent(): React.JSX.Element {
   useEffect(() => {
     const initializeApp = async () => {
       logger.info('🚀 앱 초기화 시작');
+
+      // FCM 초기화 (백그라운드에서 처리)
+      fcmService.initialize().catch(error => {
+        logger.warn('⚠️ FCM 초기화 실패 (계속 진행)', error);
+      });
 
       // 상태바에 연결 중 표시
       showStatus(STATUS_MESSAGES.CHECKING_SERVER, 'loading');
@@ -245,6 +252,14 @@ function AppContent(): React.JSX.Element {
       logger.warn('⚠️ 올바르지 않은 YouTube URL', { url });
       Alert.alert('오류', '올바른 YouTube URL을 입력해주세요.');
       return;
+    }
+
+    // FCM 권한 요청 (옵셔널 - 실패해도 분석은 계속 진행)
+    try {
+      const hasPermission = await fcmService.ensurePermissionForAnalysis();
+      logger.info('🔔 FCM 권한 상태', { hasPermission });
+    } catch (fcmError) {
+      logger.debug('🔕 FCM 권한 요청 실패 - 푸시 알림 없이 진행', fcmError);
     }
 
     setLoading(true);
