@@ -4,6 +4,7 @@ import { MultiAgentResponse } from '../types/multiagent';
 import { getApiBaseUrl, API_TIMEOUT } from '../config/api.config';
 import { logger } from './logger';
 import fcmService from './fcmService';
+import { getDummyMultiAgentResponse, getDummySummaryResponse } from '../data/dummyData';
 
 // API 인스턴스 생성
 const api = axios.create({
@@ -93,6 +94,25 @@ export const checkServerHealth = async (): Promise<{
   };
   error?: string;
 }> => {
+  // 디버그 모드에서는 헬스체크를 건너뛰고 성공 반환
+  if (__DEV__) {
+    logger.info('🔧 디버그 모드 - 헬스체크 건너뜀');
+    return {
+      success: true,
+      data: {
+        status: 'healthy',
+        version: 'debug',
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'debug',
+          youtube: 'debug',
+          ai: 'debug',
+          multi_agent: 'debug',
+        },
+      },
+    };
+  }
+
   logger.info('🏥 서버 상태 확인 시작');
   try {
     const response = await api.get('/api/health', {
@@ -172,6 +192,21 @@ export const checkCookieStatus = async () => {
 
 export const summarizeVideo = async (url: string): Promise<ApiResponse<Summary>> => {
   logger.logFunction('summarizeVideo', { url });
+
+  // 디버그 모드에서는 더미 데이터 즉시 반환
+  if (__DEV__) {
+    logger.info('🔧 디버그 모드 - 더미 요약 데이터 반환');
+
+    // 약간의 지연을 추가하여 로딩 상태를 볼 수 있게 함
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const dummyData = getDummySummaryResponse(url);
+    return {
+      success: true,
+      data: dummyData as Summary,
+    };
+  }
+
   try {
     const response = await api.post<Summary>('/api/summarize', { url });
     logger.logFunction('summarizeVideo', undefined, {
@@ -230,6 +265,21 @@ export const analyzeVideoWithAgents = async (
   nickname?: string
 ): Promise<ApiResponse<MultiAgentResponse>> => {
   logger.logFunction('analyzeVideoWithAgents', { url, nickname });
+
+  // 디버그 모드에서는 더미 데이터 즉시 반환
+  if (__DEV__) {
+    logger.info('🔧 디버그 모드 - 더미 데이터 반환');
+
+    // 약간의 지연을 추가하여 로딩 상태를 볼 수 있게 함
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const dummyData = getDummyMultiAgentResponse(url);
+    return {
+      success: true,
+      data: dummyData,
+    };
+  }
+
   try {
     // FCM 토큰 가져오기 (옵셔널 - 실패해도 계속 진행)
     let fcmToken: string | null = null;

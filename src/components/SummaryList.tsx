@@ -19,9 +19,16 @@ const SummaryList: React.FC<SummaryListProps> = ({
   summaries,
   onSelectSummary,
 }) => {
+  // 최신순으로 정렬
+  const sortedSummaries = [...summaries].sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+    return dateB - dateA; // 최신순 (내림차순)
+  });
+
   logger.debug('📋 SummaryList 렌더링', {
-    summariesCount: summaries.length,
-    summariesData: summaries.map(s => ({
+    summariesCount: sortedSummaries.length,
+    summariesData: sortedSummaries.map(s => ({
       id: s.id,
       title: s.title,
       channel: s.channel,
@@ -38,7 +45,7 @@ const SummaryList: React.FC<SummaryListProps> = ({
     onSelectSummary(summary);
   };
 
-  if (summaries.length === 0) {
+  if (sortedSummaries.length === 0) {
     logger.info('📋 비어있는 요약 목록 표시');
     return (
       <View style={styles.emptyContainer}>
@@ -51,14 +58,42 @@ const SummaryList: React.FC<SummaryListProps> = ({
     );
   }
 
+  // 날짜 및 시간 포맷 함수
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const time = date.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    if (diffDays === 0) {
+      return `오늘 ${time}`;
+    } else if (diffDays === 1) {
+      return `어제 ${time}`;
+    } else if (diffDays < 7) {
+      return `${diffDays}일 전 ${time}`;
+    } else {
+      const dateStr = date.toLocaleDateString('ko-KR', {
+        month: 'numeric',
+        day: 'numeric'
+      });
+      return `${dateStr} ${time}`;
+    }
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
         <Text style={styles.header}>
-          저장된 요약 ({summaries.length}개)
+          저장된 요약 ({sortedSummaries.length}개)
         </Text>
-        
-        {summaries.map((summary, index) => (
+
+        {sortedSummaries.map((summary, index) => (
           <TouchableOpacity
             key={summary.id || index}
             style={styles.card}
@@ -77,7 +112,7 @@ const SummaryList: React.FC<SummaryListProps> = ({
               </Text>
               {summary.created_at && (
                 <Text style={styles.cardDate}>
-                  {new Date(summary.created_at).toLocaleDateString('ko-KR')}
+                  {formatDateTime(summary.created_at)}
                 </Text>
               )}
             </View>

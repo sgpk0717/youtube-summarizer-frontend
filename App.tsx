@@ -242,16 +242,21 @@ function AppContent(): React.JSX.Element {
   const handleSummarize = async () => {
     logger.info('🎬 요약하기 시작', { url, useMultiAgent, nickname });
 
-    if (!url.trim()) {
-      logger.warn('⚠️ URL 비어있음');
-      Alert.alert('알림', 'YouTube URL을 입력해주세요.');
-      return;
-    }
+    // 디버그 모드에서는 URL 검증 건너뛰기
+    if (!__DEV__) {
+      if (!url.trim()) {
+        logger.warn('⚠️ URL 비어있음');
+        Alert.alert('알림', 'YouTube URL을 입력해주세요.');
+        return;
+      }
 
-    if (!isValidYouTubeUrl(url)) {
-      logger.warn('⚠️ 올바르지 않은 YouTube URL', { url });
-      Alert.alert('오류', '올바른 YouTube URL을 입력해주세요.');
-      return;
+      if (!isValidYouTubeUrl(url)) {
+        logger.warn('⚠️ 올바르지 않은 YouTube URL', { url });
+        Alert.alert('오류', '올바른 YouTube URL을 입력해주세요.');
+        return;
+      }
+    } else {
+      logger.info('🔧 디버그 모드 - URL 검증 건너뜀');
     }
 
     // FCM 권한 요청 (옵셔널 - 실패해도 분석은 계속 진행)
@@ -338,7 +343,16 @@ function AppContent(): React.JSX.Element {
     logger.info('📄 요약 선택', { id: summary.id, title: summary.title });
     setCurrentSummary(summary);
     setViewState('summary');
-    setActiveTab('summarize');
+    // 탭 포커스는 목록 탭에 유지
+    setActiveTab('list');
+  };
+
+  // 요약 상세에서 목록으로 돌아가기
+  const handleBackToList = () => {
+    logger.info('🔙 목록으로 돌아가기');
+    setViewState('list');
+    setCurrentSummary(null);
+    setActiveTab('list');
   };
 
   // 콘텐츠 렌더링
@@ -356,7 +370,10 @@ function AppContent(): React.JSX.Element {
 
       case 'summary':
         return currentSummary ? (
-          <SummaryView summary={currentSummary} />
+          <SummaryView
+            summary={currentSummary}
+            onBack={handleBackToList}
+          />
         ) : null;
 
       case 'multiagent':

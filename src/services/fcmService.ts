@@ -98,6 +98,25 @@ class FCMService {
         return false;
       }
 
+      // Android 버전 체크 - Android 13 미만에서는 기본적으로 권한 허용
+      if (Platform.OS === 'android' && Platform.Version < 33) {
+        logger.debug('📱 Android 13 미만 - 알림 권한 기본 허용');
+        return true;
+      }
+
+      // 이미 권한을 체크한 적이 있는지 확인
+      const permissionChecked = await AsyncStorage.getItem('@fcm_permission_checked');
+      if (permissionChecked === 'true') {
+        // 이미 체크했다면 현재 상태만 확인
+        const authStatus = await messaging().hasPermission();
+        const hasPermission = (
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL
+        );
+        logger.debug('📱 FCM 권한 상태 (캐시됨)', { hasPermission });
+        return hasPermission;
+      }
+
       const authStatus = await messaging().hasPermission();
       return (
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -105,7 +124,8 @@ class FCMService {
       );
     } catch (error) {
       logger.error('❌ FCM 권한 확인 실패', error);
-      return false;
+      // 에러가 발생해도 Android에서는 기본적으로 true 반환
+      return Platform.OS === 'android';
     }
   }
 
@@ -198,13 +218,8 @@ class FCMService {
       }
     });
 
-    // 백그라운드 메시지 핸들러는 index.js에 설정
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
-      logger.info('📬 백그라운드 푸시 알림 처리', {
-        title: remoteMessage.notification?.title,
-        data: remoteMessage.data,
-      });
-    });
+    // 백그라운드 메시지 핸들러는 index.js에 설정됨
+    // 여기서는 설정하지 않음 (중복 설정 방지)
 
     // 알림 클릭 처리
     messaging().onNotificationOpenedApp(remoteMessage => {
@@ -246,8 +261,10 @@ class FCMService {
             [
               {
                 text: '거부',
-                onPress: () => {
+                onPress: async () => {
                   logger.info('❌ 사용자가 알림 권한 거부');
+                  // 권한 체크 완료 표시 저장
+                  await AsyncStorage.setItem('@fcm_permission_checked', 'true');
                   resolve(false);
                 },
                 style: 'cancel',
@@ -257,6 +274,8 @@ class FCMService {
                 onPress: async () => {
                   const granted = await this.requestPermission();
                   logger.info(`📱 알림 권한 요청 결과: ${granted}`);
+                  // 권한 체크 완료 표시 저장
+                  await AsyncStorage.setItem('@fcm_permission_checked', 'true');
                   resolve(granted);
                 },
               },

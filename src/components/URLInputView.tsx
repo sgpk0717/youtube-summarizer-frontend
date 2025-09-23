@@ -61,7 +61,7 @@ const URLInputView: React.FC<URLInputViewProps> = ({
         <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
           <TextInput
             style={styles.input}
-            placeholder="https://youtube.com/watch?v=..."
+            placeholder={__DEV__ ? "디버그 모드 - URL 입력 안해도 됨!" : "https://youtube.com/watch?v=..."}
             placeholderTextColor={theme.colors.neutral.gray400}
             value={url}
             onChangeText={handleTextChange}
@@ -79,7 +79,7 @@ const URLInputView: React.FC<URLInputViewProps> = ({
         <TouchableOpacity
           style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
           onPress={onAnalyze}
-          disabled={loading || !url.trim()}
+          disabled={__DEV__ ? loading : (loading || !url.trim())}
           activeOpacity={0.8}
         >
           {loading ? (
